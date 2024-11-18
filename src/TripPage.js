@@ -23,7 +23,8 @@ const TripPage = ({ onCancel }) => (
       <View style={styles.buttonContainer}>
         <Button
           title="End Trip"
-          onPress={() => navigation.navigate('TripAnalysis')}
+          onPress={onCancel}
+          // onPress={() => navigation.navigate('TripAnalysis')}
         />
       </View>
     </View>
