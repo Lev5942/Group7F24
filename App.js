@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import MainPage from './src/MainPage';
 import LoginPage from './src/LoginPage';
 import HistoryPage from './src/HistoryPage';
+import TripPage from './src/TripPage';
 
 const App = () => {
   // State variables
@@ -27,7 +28,8 @@ const App = () => {
   };
 
   const handleStartTrip = () => {
-    alert('Trip started!');
+    // alert('Trip started!');
+    setCurrentPage('trip');
     // Add actual logic here to start recording the trip
   };
 
@@ -36,7 +38,7 @@ const App = () => {
       {currentPage === 'main' && (
         <MainPage
           onLoginPress={() => setCurrentPage('login')}
-          onStartTripPress={handleStartTrip}
+          onStartTripPress={() => setCurrentPage('trip')}
           onHistoryPress={() => setCurrentPage('history')}
           isLoggedIn={isLoggedIn}
         />
@@ -53,8 +55,18 @@ const App = () => {
         />
       )}
 
+      {currentPage === 'trip' && (
+        <TripPage 
+          data={data}  
+          onCancel={() => setCurrentPage('main')}
+         />
+      )}
+
       {currentPage === 'history' && isLoggedIn && (
-        <HistoryPage data={data} />
+        <HistoryPage 
+          data={data} 
+          onCancel={() => setCurrentPage('main')}
+        />
       )}
     </View>
   );
