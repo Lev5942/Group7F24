@@ -19,12 +19,8 @@ const App = () => {
 
   // Handlers for navigation
   const handleLogin = () => {
-    if (username === 'user' && password === 'password') {
       setIsLoggedIn(true);
       setCurrentPage('main');
-    } else {
-      alert('Incorrect username or password');
-    }
   };
 
   const handleStartTrip = () => {
@@ -55,7 +51,7 @@ const App = () => {
         />
       )}
 
-      {currentPage === 'trip' && (
+      {currentPage === 'trip' && isLoggedIn &&(
         <TripPage 
           data={data}  
           onCancel={() => setCurrentPage('main')}

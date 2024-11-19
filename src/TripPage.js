@@ -1,9 +1,32 @@
 import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
+import Speedometer, {
+  Background,
+  Arc,
+  Needle,
+  Progress,
+  Marks,
+  Indicator,
+} from 'react-native-cool-speedometer';
 
 const TripPage = ({ onCancel }) => (
+  
     <View style={styles.container}>
       <Text style={styles.title}>Drive Mate Dashboard</Text>
+
+
+      <Speedometer
+        value={128}
+        fontFamily='squada-one'
+      >
+      <Background />
+      <Arc/>
+      <Needle/>
+      <Progress/>
+      <Marks/>
+      <Indicator/>
+      </Speedometer>
+      
       <View style={styles.dataContainer}>
         <Text style={styles.label}>Speed:</Text>
         <Text style={styles.value}>0 km/h</Text>
