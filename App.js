@@ -34,6 +34,9 @@ const App = () => {
       {currentPage === 'main' && (
         <MainPage
           onLoginPress={() => setCurrentPage('login')}
+          onLogoutPress={() => {
+            setIsLoggedIn(false)
+          }}
           onStartTripPress={() => setCurrentPage('trip')}
           onHistoryPress={() => setCurrentPage('history')}
           isLoggedIn={isLoggedIn}
@@ -72,7 +75,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: 'black',
     justifyContent: 'center',
   },
 });
