@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Button  } from 'react-native';
 
-const HistoryPage = ({ data }) => (
+const HistoryPage = ({ data, onCancel }) => (
   <View style={styles.historyContainer}>
     <Text style={styles.title}>DriveMate History</Text>
     <FlatList
@@ -16,6 +16,8 @@ const HistoryPage = ({ data }) => (
         </View>
       )}
     />
+    
+    <Button title="Cancel" onPress={onCancel} />
   </View>
 );
 

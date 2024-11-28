@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import MainPage from './src/MainPage';
 import LoginPage from './src/LoginPage';
 import HistoryPage from './src/HistoryPage';
+import TripPage from './src/TripPage';
 
 const App = () => {
   // State variables
@@ -18,16 +19,13 @@ const App = () => {
 
   // Handlers for navigation
   const handleLogin = () => {
-    if (username === 'user' && password === 'password') {
       setIsLoggedIn(true);
       setCurrentPage('main');
-    } else {
-      alert('Incorrect username or password');
-    }
   };
 
   const handleStartTrip = () => {
-    alert('Trip started!');
+    // alert('Trip started!');
+    setCurrentPage('trip');
     // Add actual logic here to start recording the trip
   };
 
@@ -36,7 +34,10 @@ const App = () => {
       {currentPage === 'main' && (
         <MainPage
           onLoginPress={() => setCurrentPage('login')}
-          onStartTripPress={handleStartTrip}
+          onLogoutPress={() => {
+            setIsLoggedIn(false)
+          }}
+          onStartTripPress={() => setCurrentPage('trip')}
           onHistoryPress={() => setCurrentPage('history')}
           isLoggedIn={isLoggedIn}
         />
@@ -53,8 +54,18 @@ const App = () => {
         />
       )}
 
+      {currentPage === 'trip' && isLoggedIn &&(
+        <TripPage 
+          data={data}  
+          onCancel={() => setCurrentPage('main')}
+         />
+      )}
+
       {currentPage === 'history' && isLoggedIn && (
-        <HistoryPage data={data} />
+        <HistoryPage 
+          data={data} 
+          onCancel={() => setCurrentPage('main')}
+        />
       )}
     </View>
   );
@@ -64,7 +75,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: 'black',
     justifyContent: 'center',
   },
 });
