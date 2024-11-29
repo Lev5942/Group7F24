@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
-import axios from 'axios';
+import {
+  View,
+  Text,
+  Button,
+  StyleSheet,
+  Alert,
+} from 'react-native';
 import Speedometer, {
   Background,
   Arc,
@@ -9,85 +14,147 @@ import Speedometer, {
   Marks,
   Indicator,
 } from 'react-native-cool-speedometer';
-
-const generateRandomMaxSpeed = () => Math.floor(Math.random() * (100 - 40 + 1)) + 40;
+import * as FileSystem from 'expo-file-system';
+import axios from 'axios';
 
 const TripPage = ({ onCancel }) => {
   const [speed, setSpeed] = useState(0);
   const [acceleration, setAcceleration] = useState(0);
   const [distance, setDistance] = useState(0);
-  const [isKilometers, setIsKilometers] = useState(false);
-  const [maxSpeed, setMaxSpeed] = useState(generateRandomMaxSpeed());
-  const [streets, setStreets] = useState([]);
-  const [currentStreet, setCurrentStreet] = useState(null);
+  const [warningsCount, setWarningsCount] = useState(0);
+  const [speedLimit, setSpeedLimit] = useState(50); // Default speed limit
+  const [currentStreet, setCurrentStreet] = useState('No street');
+  const [isWarningActive, setIsWarningActive] = useState(false);
 
+  const [maxSpeed, setMaxSpeed] = useState(100); // Randomized maximum speed
+  const [startTime, setStartTime] = useState(new Date());
+  const [totalSpeed, setTotalSpeed] = useState(0);
+  const [speedReadings, setSpeedReadings] = useState(0);
+
+  // Load streets from backend
   useEffect(() => {
     axios
-      .get('http://192.168.0.18:5000/api/streets') // Replace with your backend URL
+      .get('http://192.168.0.18:5000/api/streets')
       .then((response) => {
-        console.log('Fetched streets:', response.data); // Debug fetched streets
-        setStreets(response.data);
-        const initialStreet = response.data[Math.floor(Math.random() * response.data.length)];
-        console.log('Initial street:', initialStreet); // Debug initial street
-        setCurrentStreet(initialStreet);
+        if (response.data.length > 0) {
+          const randomStreet =
+            response.data[Math.floor(Math.random() * response.data.length)];
+          setCurrentStreet(randomStreet.name);
+          setSpeedLimit(randomStreet.speed_limit);
+        }
       })
-      .catch((error) => {
-        console.error('Error fetching streets:', error);
-      });
+      .catch((error) => console.error('Error fetching streets:', error));
   }, []);
 
+  // Simulate real-time updates for speed and distance
   useEffect(() => {
     const interval = setInterval(() => {
-      if (streets.length > 0) {
-        const randomStreet = streets[Math.floor(Math.random() * streets.length)];
-        console.log('Updated street:', randomStreet); // Debug updated street
-        setCurrentStreet(randomStreet);
-      }
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [streets]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSpeed((currentSpeed) => {
-        const step = 1;
-        if (currentSpeed < maxSpeed) return Math.min(currentSpeed + step, maxSpeed);
-        if (currentSpeed > maxSpeed) return Math.max(currentSpeed - step, maxSpeed);
-        return currentSpeed;
+      setSpeed((prev) => {
+        const newSpeed = Math.min(
+          Math.max(prev + (Math.random() - 0.45) * 15, 0), // Gradual increase/decrease
+          maxSpeed
+        );
+        setAcceleration((newSpeed - prev) / 3.6); // Calculate acceleration (m/s^2)
+        return newSpeed;
       });
 
-      const speedInMetersPerSecond = speed / 3.6;
-      setDistance((prevDistance) => {
-        const increment = speedInMetersPerSecond;
-        const totalDistance = prevDistance + increment;
-        if (totalDistance > 1000) setIsKilometers(true);
-        return totalDistance;
-      });
-
-      setAcceleration(() => {
-        if (speed < maxSpeed) return 1;
-        if (speed > maxSpeed) return -1;
-        return 0;
-      });
+      setDistance((prev) => prev + speed / 3.6); // Distance in meters (speed in km/h)
+      setTotalSpeed((prev) => prev + speed); // Sum up speed for average calculation
+      setSpeedReadings((prev) => prev + 1); // Increment speed readings count
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [maxSpeed]);
+    return () => clearInterval(interval); // Cleanup interval on unmount
+  }, [speed, maxSpeed]);
 
+  // Update street and speed limit every minute
   useEffect(() => {
-    const resetMaxSpeedInterval = setInterval(() => {
-      setMaxSpeed(generateRandomMaxSpeed());
-    }, 30000);
+    const interval = setInterval(() => {
+      axios
+        .get('http://192.168.0.18:5000/api/streets')
+        .then((response) => {
+          if (response.data.length > 0) {
+            const randomStreet =
+              response.data[Math.floor(Math.random() * response.data.length)];
+            setCurrentStreet(randomStreet.name);
+            setSpeedLimit(randomStreet.speed_limit);
+          }
+        })
+        .catch((error) => console.error('Error fetching streets:', error));
+    }, 60000);
 
-    return () => clearInterval(resetMaxSpeedInterval);
+    return () => clearInterval(interval); // Cleanup interval on unmount
   }, []);
+
+  // Monitor warnings
+  useEffect(() => {
+    if (speed > speedLimit) {
+      if (!isWarningActive) {
+        setWarningsCount((prev) => prev + 1); // Count the warning
+        setIsWarningActive(true);
+      }
+    } else {
+      setIsWarningActive(false); // Reset warning state
+    }
+  }, [speed, speedLimit]);
+
+  const handleEndTrip = async () => {
+    const duration = (new Date() - startTime) / 1000; // Duration in seconds
+    const durationString = `${Math.floor(duration / 60)} min ${(
+      duration % 60
+    ).toFixed(0)} sec`;
+    const averageSpeed =
+      speedReadings > 0 ? totalSpeed / speedReadings : 0; // Average speed in km/h
+    const totalDistanceValue = distance.toFixed(2); // Numeric value only
+    const tripScore = Math.max(100 - warningsCount * 10, 0); // Score calculation
+  
+    const tripData = {
+      date: new Date().toISOString(), // ISO date format
+      duration: durationString,
+      averageSpeed: averageSpeed.toFixed(2),
+      totalDistance: totalDistanceValue, // Send numeric distance
+      warnings: warningsCount,
+      tripScore,
+    };
+
+    console.log('Trip Data:', tripData);
+
+    try {
+      // Save to local file
+      const filePath = `${FileSystem.documentDirectory}tripsLog.txt`;
+      const existingData = await FileSystem.readAsStringAsync(filePath).catch(
+        () => ''
+      );
+      const updatedData = `${existingData}\n${JSON.stringify(tripData)}`;
+      await FileSystem.writeAsStringAsync(filePath, updatedData);
+      console.log('Trip data saved to:', filePath);
+  
+      // Send to backend
+      const response = await axios.post(
+        'http://192.168.0.18:5000/api/saveTrip',
+        tripData
+      );
+      console.log('Trip data saved to backend:', response.data);
+  
+      Alert.alert(
+        'Trip Ended',
+        `Date: ${tripData.date}\nDuration: ${tripData.duration}\nAverage Speed: ${tripData.averageSpeed} km/h\nDistance: ${totalDistanceValue} m\nWarnings: ${tripData.warnings}\nScore: ${tripData.tripScore}`
+      );
+    } catch (error) {
+      console.error('Error saving trip data to backend:', error);
+      Alert.alert('Error', 'Failed to save trip data to backend.');
+    }
+    const handleEndTrip = async () => {
+      await saveTripDataToBackend(); // Save the trip data
+      fetchDriverScore(); // Fetch the updated driver's score
+    };
+    onCancel(); // Return to the main page
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Drive Mate Dashboard</Text>
 
-      <Speedometer value={speed} fontFamily="squada-one">
+      <Speedometer value={speed} max={180}>
         <Background />
         <Arc />
         <Needle />
@@ -107,23 +174,28 @@ const TripPage = ({ onCancel }) => {
       <View style={styles.dataContainer}>
         <Text style={styles.label}>Distance:</Text>
         <Text style={styles.value}>
-          {isKilometers
+          {distance > 1000
             ? `${(distance / 1000).toFixed(2)} km`
             : `${distance.toFixed(2)} m`}
         </Text>
       </View>
+      <View style={styles.dataContainer}>
+        <Text style={styles.label}>Current Location:</Text>
+        <Text style={styles.value}>{currentStreet}</Text>
+      </View>
+      <View style={styles.dataContainer}>
+        <Text style={styles.label}>Speed Limit:</Text>
+        <Text style={styles.value}>{speedLimit} km/h</Text>
+      </View>
 
-      {currentStreet && (
-        <View style={styles.streetContainer}>
-          <Text style={styles.label}>Current Location:</Text>
-          <Text style={styles.streetValue}>{currentStreet.name}</Text>
-          <Text style={styles.label}>Speed Limit:</Text>
-          <Text style={styles.streetValue}>{currentStreet.speed_limit} km/h</Text>
-        </View>
+      {speed > speedLimit && (
+        <Text style={styles.warningText}>
+          Slow down! You are exceeding the speed limit.
+        </Text>
       )}
 
       <View style={styles.buttonContainer}>
-        <Button title="End Trip" color="grey" onPress={onCancel} />
+        <Button title="End Trip" color="grey" onPress={handleEndTrip} />
       </View>
     </View>
   );
@@ -150,7 +222,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '80%',
-    marginVertical: 10,
+    marginVertical: 5,
   },
   label: {
     fontSize: 18,
@@ -161,18 +233,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
   },
-  streetContainer: {
-    marginVertical: 20,
-    alignItems: 'center',
-  },
-  streetValue: {
-    fontSize: 18,
+  warningText: {
+    marginTop: 10,
+    color: 'red',
+    fontSize: 16,
     fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 5,
   },
   buttonContainer: {
-    marginTop: 30,
+    marginTop: 20,
   },
 });
 
