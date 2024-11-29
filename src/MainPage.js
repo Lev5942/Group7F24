@@ -48,6 +48,7 @@ const MainPage = ({
   };
 
   return (
+    
     <View style={styles.mainContainer}>
       <View style={styles.titleContainer}>
         <Text style={styles.title}>Welcome to DriveMate</Text>
